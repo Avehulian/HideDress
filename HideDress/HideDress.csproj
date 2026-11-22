@@ -1,0 +1,131 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <OutputType>Library</OutputType>
+    <RootNamespace>HideDress</RootNamespace>
+    <AssemblyName>HideDress</AssemblyName>
+    <Description>HideDress - SPT 4.1.6 (BepInEx 5 / Mono)</Description>
+    <Version>1.4.0</Version>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>false</AllowUnsafeBlocks>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Configurations>Debug;Release</Configurations>
+    <Deterministic>true</Deterministic>
+    <OutputPath>bin\$(Configuration)\</OutputPath>
+    <NoWarn>$(NoWarn);CS0618;CS0649;CS0169;CS8632;CS0109</NoWarn>
+  </PropertyGroup>
+
+  <!--
+    SPT 4.1.6 (EFT 0.16.9) is a Mono / Unity 2022.3 build:
+      BepInEx 5.4.23          -> BepInEx/core
+      game assemblies         -> EscapeFromTarkov_Data/Managed
+      KmyTarkovApi 2.0 fork   -> BepInEx/plugins/kmyuhkyuk-KmyTarkovApi
+
+    Override the install path with -p:Spt416Dir=<path to a live SPT 4.1.6 install>.
+  -->
+  <PropertyGroup>
+    <Spt416Dir Condition="'$(Spt416Dir)' == ''">G:\Games\SPTarkov-4.1.6</Spt416Dir>
+    <ManagedDir>$(Spt416Dir)\EscapeFromTarkov_Data\Managed</ManagedDir>
+    <CoreDir>$(Spt416Dir)\BepInEx\core</CoreDir>
+    <KmyDir>$(Spt416Dir)\BepInEx\plugins\kmyuhkyuk-KmyTarkovApi</KmyDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Build\**" />
+    <Compile Remove="build\**" />
+    <Compile Remove="release\**" />
+    <None Remove="Build\**" />
+    <None Remove="build\**" />
+    <None Remove="release\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BepInEx 5.4 / HarmonyX (Mono) -->
+    <Reference Include="BepInEx">
+      <HintPath>$(CoreDir)\BepInEx.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(CoreDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- Game -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ManagedDir)\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ManagedDir)\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ManagedDir)\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sirenix.Serialization">
+      <HintPath>$(ManagedDir)\Sirenix.Serialization.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sirenix.Utilities">
+      <HintPath>$(ManagedDir)\Sirenix.Utilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Sirenix.OdinInspector.Attributes">
+      <HintPath>$(ManagedDir)\Sirenix.OdinInspector.Attributes.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- KmyTarkovApi 2.0 (4.1.6 fork) -->
+    <Reference Include="KmyTarkovApi">
+      <HintPath>$(KmyDir)\KmyTarkovApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="KmyTarkovConfiguration">
+      <HintPath>$(KmyDir)\KmyTarkovConfiguration.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="KmyTarkovReflection">
+      <HintPath>$(KmyDir)\KmyTarkovReflection.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="KmyTarkovUtils">
+      <HintPath>$(KmyDir)\KmyTarkovUtils.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="localized\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- Stage the BepInEx layout used by the release zip. -->
+  <Target Name="StagePlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <_PackageDir>$(MSBuildProjectDirectory)\build\package</_PackageDir>
+      <_PluginDir>$(_PackageDir)\BepInEx\plugins\kmyuhkyuk-HideDress</_PluginDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_Localized Include="$(MSBuildProjectDirectory)\localized\*.*" />
+      <_ReadMe Include="$(MSBuildProjectDirectory)\ReadMe.txt" />
+    </ItemGroup>
+    <MakeDir Directories="$(_PluginDir)\localized" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(_PluginDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_Localized)" DestinationFolder="$(_PluginDir)\localized" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_ReadMe)" DestinationFolder="$(_PackageDir)" SkipUnchangedFiles="true" />
+    <Message Importance="high" Text="Staged plugin -> build\package" />
+  </Target>
+
+  <Target Name="PackageRelease" AfterTargets="StagePlugin" Condition="'$(Configuration)' == 'Release'">
+    <MakeDir Directories="$(MSBuildProjectDirectory)\release" />
+    <Delete Files="$(MSBuildProjectDirectory)\release\HideDress-$(Version)-SPT4.1.6.zip" ContinueOnError="true" />
+    <ZipDirectory SourceDirectory="$(MSBuildProjectDirectory)\build\package"
+                  DestinationFile="$(MSBuildProjectDirectory)\release\HideDress-$(Version)-SPT4.1.6.zip"
+                  Overwrite="true" />
+    <Message Importance="high" Text="Packaged release\HideDress-$(Version)-SPT4.1.6.zip" />
+  </Target>
+
+</Project>
