@@ -1,6 +1,6 @@
 # HideDress
 
-Hide your own or other players' dress (clothing and skins) on the character model.
+Hide your own or other players' gear on the character model.
 
 This is the **SPT 4.1.6** build (BepInEx 5.4.23 / Mono client, EFT 0.16.9), ported from
 the original SPT 3.x mod by [kmyuhkyuk](https://github.com/kmyuhkyuk/HideDress).
